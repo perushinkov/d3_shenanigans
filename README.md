@@ -18,3 +18,8 @@ NOTES:
 
 Inspiration:
 This was inspired by the SciCraft Minecraft server, where they had connected all the locations on their maps with 'transport'. I decided I want a tool that generates the road coordinates given the locations and optionally the already built road sections.
+
+TODOS:
+- the code in here is just a JS God Object (shame, shame). A rewrite to Angular is planned. (Once Angular Elements is improved enough, I might make an export to CustomElement possible).
+- fix a few road building artefacts
+- add a lot more functionality, such as: locations input, export/import road segments, numbers on the side of the map viewer for current coordinate, hover with info for locations, switcher between location data sets (Nether, Overworld, etc).
