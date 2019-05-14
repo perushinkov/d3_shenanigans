@@ -1,6 +1,7 @@
-const width = 1200;
-const height = 1200;
-const mappedAreaSize = 1024*3;
+const NICE_FACTOR = 0.90;
+const width = window.innerHeight * NICE_FACTOR;
+const height = window.innerHeight * NICE_FACTOR;
+const mappedAreaSize = 1024*5;
 
 const BRIDGE_UNIT = 128;
 const fake = {
@@ -24,15 +25,15 @@ const centerPointFromTranslate = function() {
 
 const lineStyler = function (d) {
   if (d === 0) {
-    return 'stroke-width:8px;stroke: rgba(110, 3, 7, 0.88);';
+    return 'stroke-width:8px;';
   } else if (d % (BRIDGE_UNIT*8) === 0) {
-    return 'stroke-width:4px;rgba(132, 0, 11, 0.38)';
+    return 'stroke-width:4px;';
   }
-  return 'stroke-width:1px;rgba(132, 0, 11, 0.38)'
+  return 'stroke-width:1px;'
 };
 
 const drawCircles = function(container, circleSize) {
-  container.append('g')
+  return container.append('g')
     .selectAll('circle')
     .data(data)
     .enter()
@@ -64,7 +65,7 @@ for (let i = 0; i < 200; i++) {
   data2.push(_nextSpiralPoint(data2[data2.length - 1], BRIDGE_UNIT))
 }
 const data3 = d3
-  .range(55)
+  .range(35)
   .map(() => {
     return [
       Math.floor(fake.xGen()/BRIDGE_UNIT)*BRIDGE_UNIT,
@@ -78,28 +79,39 @@ const zoom = d3.behavior
   .scaleExtent([1./60, 10])
   .on("zoom", zoomed);
 
-const svg = d3.select("body").append("svg")
+const svg = d3.select(".mapContainer").append("svg")
   .attr("width", width)
   .attr("height", height)
   .append("g")
   .call(zoom);
-
+// Viewing port
 svg.append("rect")
-  .attr('class', 'rect')
+  .attr('class', 'viewing-rect')
   .attr("pointer-events", "all")
   .attr("width", width)
   .attr("height", height);
 
-const scaledContainer = svg.append('g').attr('class', 'scaled');
-drawCircles(scaledContainer, 32);
+const mapBackground = svg.append('g');
+const towerLevelOnes = svg.append('g').attr('class', 'scaled');
+const towerLevelTwos = svg.append('g');
+
+mapBackground.append("rect")
+  .attr('class', 'map-color')
+  .attr("pointer-events", "all")
+  .attr("x", 0 - mappedAreaSize/2)
+  .attr("y", 0 - mappedAreaSize/2)
+  .attr("width", mappedAreaSize)
+  .attr("height", mappedAreaSize);
 
 
-const container = svg.append('g');
-const circle = drawCircles(container, 20);
+const circle = drawCircles(towerLevelTwos, 20);
 
-container.append('g')
+drawCircles(towerLevelOnes, 32);
 
-container.append('g')
+
+
+
+towerLevelTwos.append('g')
   .attr("class", "x axis")
   .selectAll('line')
   .data(d3.range(-mappedAreaSize/2, mappedAreaSize/2, BRIDGE_UNIT))
@@ -111,7 +123,7 @@ container.append('g')
   .attr('y2', function(d) {return mappedAreaSize/2;})
   .attr('style', lineStyler);
 
-container.append('g')
+towerLevelTwos.append('g')
   .attr("class", "y axis")
   .selectAll('line')
   .data(d3.range(-mappedAreaSize/2, mappedAreaSize/2, BRIDGE_UNIT))
@@ -129,7 +141,8 @@ function zoomed() {
   // That's the regular zoom/scale
   const translateString = "translate(" + d3.event.translate + ")";
   const scaleString = "scale(" + d3.event.scale + ")";
-  container.attr("transform", translateString + scaleString);
+  mapBackground.attr("transform", translateString + scaleString);
+  towerLevelTwos.attr("transform", translateString + scaleString);
 
   // That is the modified scale/transform combination that creates the illusion
   // of the tower points leaning away from center of the map
@@ -139,18 +152,15 @@ function zoomed() {
   const scale2String = "scale(" + scaleFactor + ")";
   const translateReducedString = "translate(" + translateReduced + ")";
   const translate2String = "translate(" + centralPoint + ")";
-  scaledContainer.attr("transform", translate2String + scale2String + translateReducedString + scaleString)
+  towerLevelOnes.attr("transform", translate2String + scale2String + translateReducedString + scaleString)
 }
 
-function goToCoordinates () {
-  const x = parseInt(document.getElementById('xinput').value) || 0;
-  const y = parseInt(document.getElementById('yinput').value) || 0;
+function goToCoordinates (x, y) {
   const translate = [width/2, height/2];
   translate[0] += x;
   translate[1] += y;
   zoom.translate(translate);
-  zoom.scale(1.);
-  zoom.event(container);
+  zoom.event(towerLevelTwos);
 }
 
 
@@ -169,23 +179,8 @@ const roadBuilder = (function buildHighwayCalculator(hub, targetLocations, mapSi
   // initialized with a number guaranteed to be larger than a distance on the map
   const _bestDistances = targetLocations.map(() => {return {amount: mapSize*2, bridgePoint: 0};});
 
-  // Note how it differs from the geometric definition of distance
-  // Here the distance is counted along 45 degree diagonals and horizontal/vertical lines only
-  // Furthermore a diagonal 45 degree unit is considered the same length as its vertical/horizontal projection\
-  // This leads to blockier more predictable generation :)
-  // Modifying this function results in slightly different methods
   const _distance = function (ptA, ptB) {
     return Math.sqrt(Math.pow(ptA[0]-ptB[0],2) + Math.pow(ptA[1]-ptB[1], 2));
-    // const xDelta = Math.abs(ptA[0] - ptB[0]);
-    // const yDelta = Math.abs(ptA[1] - ptB[1]);
-    //
-    // const nonDiagonalDistance = Math.abs(yDelta- xDelta);
-    //
-    // const biggerDelta = xDelta > yDelta ? xDelta : yDelta;
-    // const DIAG_FACTOR = Math.sqrt(2);// Math.sqrt(2); // Make this sqrt(2), if you wish for diagonals to not count as their real length
-    // const diagonalDistance = (biggerDelta - nonDiagonalDistance) * DIAG_FACTOR;
-    //
-    // return nonDiagonalDistance + diagonalDistance;
   }
 
   const _calculateNeighbourPointDistancesToLocations = function() {
@@ -362,14 +357,10 @@ const roadBuilder = (function buildHighwayCalculator(hub, targetLocations, mapSi
   }
 })([0,0], data, mappedAreaSize);
 
-const bridgeD3 = scaledContainer.append('g');
-const pointer = scaledContainer.append('g');
+const bridgeD3 = towerLevelTwos.append('g');
+const pointer = towerLevelTwos.append('g');
 
-
-function nextStep () {
-  // while (!roadBuilder.done())
-  for (let i = 0; i < 2; i++)
-    roadBuilder.next();
+function d3Render() {
 
   bridgeD3.attr('class', 'bridge')
     .selectAll('line')
@@ -397,10 +388,22 @@ function nextStep () {
   pointerD3.exit()
     .remove()
 }
+function nextStep () {
+  roadBuilder.next();
+  d3Render();
+}
+function fitMapOnView () {
+  const viewDimension = Math.min(width, height);
+
+  // Feels better when it doesn't fit perfectly
+  // but instead there's an outside-of-map strip visible
+  zoom.scale(NICE_FACTOR*viewDimension/mappedAreaSize)
+  goToCoordinates(0,0);
+}
 function startBuilding () {
   nextStep();
   if (!roadBuilder.done()) {
-    setTimeout(startBuilding, 50)
+    setTimeout(startBuilding, 100)
   } else {
     alert('Road builder done!');
   }
