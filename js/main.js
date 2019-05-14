@@ -257,7 +257,7 @@ const roadBuilder = (function buildHighwayCalculator(hub, targetLocations, mapSi
       const pt2 = _bridgeNeighbouringPoints[i2].pt;
       const orig2 = _bridgeNeighbouringPoints[i2].originPoint;
       const dist2 = _distance(pt2, orig2);
-      return dist1 < dist2;
+      return dist1 - dist2;
     });
     const bestIndex = bestIndexes[0];
 
